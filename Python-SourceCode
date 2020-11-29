@@ -1,0 +1,273 @@
+#===========================================================IPZapp version 1.2 =================================================================================
+#Written by Kojo Harding Mienza
+# The purpose of this application is to automate the process of doing bulk IP analysis. Every entry level SOC analyst, and their managers, know how much of a
+pain it can be to look up massive amounts of IPs before applying blocks and detections. So, the purpose of this little Python App is to automate that for you.
+
+# This Source code has NO API Keys, you need to get your own, read the ReadME!!!
+#==============================================================================================================================================================
+
+from urllib.request import Request, urlopen
+import re
+
+#Variable Declarations
+
+currChar=0;
+ipHolder=""
+ipArray=[]
+APIVoid_ISP=[]
+APIVoid_rDNS=[]
+APIVoidCountry=[]
+APIVoidBulk=""
+APIVoid=[]
+APIVoidBulk=""
+APIVoidBlacklistCount=[]
+BlacklistCount=0
+ViewDNSBulk=""
+ViewDNS=[]
+Req=""
+x=0
+WhoISmatches=0
+ISPmatches=0
+ExitSearch=0
+IPBlocklist=[]
+IPBlocklist_WithCheck=[]
+ListValid=False
+Verdict=0
+
+# Read in List of IPS
+
+List = input (" Enter a list of IP addresses separated by commas (NO SPACES!!): " )
+
+charcheck= len(List)-1
+
+#input validation
+
+while ListValid==False and charcheck>=0 :
+        
+        currChar=ord(List[charcheck])
+        if currChar!=44 and currChar!=46 and (currChar<48 or currChar>57):   
+            ListValid=False
+            List = input("Invalid items were detected in your list. Only numbers, commas, and decimals are accepted inputs. Please re-enter the IP addresses: ")
+            charcheck= len(List)-1
+        else:
+            charcheck-=1
+            continue
+if charcheck==-1:
+        ListValid=True
+
+# Add each IP into an array (ipArray)
+counter=0
+
+if ListValid:
+    for i in List:
+        counter+=1
+        currChar=ord(i)
+        if currChar!=44:
+            ipHolder=ipHolder+i
+        if currChar==44 or counter==len(List):
+            ipArray.append(ipHolder)
+            ipHolder=""
+# Input validation to check that IP in ipHolder is a valid IP address. 
+            
+
+            
+#Second input validation, ensuring each list item is a valid IP address 
+charcheck=0
+
+for i in ipArray:
+    matchObj=re.match ('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}',ipArray[charcheck])
+#    
+    if matchObj:
+        print("IP Number:" + i + " is Valid." )
+        charcheck+=1
+        continue
+    else: 
+        ipArray.remove(i)
+        print("IP Number:" + i + " was not a Valid IP, and will be removed from the queries." )
+        charcheck+=1
+#        while ListValid==False and charcheck>=0 :
+#        
+#            currChar=ord(List[charcheck])
+#            if currChar!=44 and currChar!=46 and (currChar<48 or currChar>57):   
+#                ListValid=False
+#                List = input("Invalid items were detected in your list. Only numbers, commas, and decimals are accepted inputs. Please re-enter: ")
+#                charcheck= len(List)-1
+#            else:
+#                charcheck-=1
+#                continue
+            
+ # Loop for cycling through IP array, and calling APIs   
+counter2=0
+
+for i in ipArray:
+
+# Query Viewdns API and save to String APIVoidBulk###
+
+    
+    Req= Request('https://api.viewdns.info/reverseip/?host='+ ipArray[counter2] +'&apikey=APIKeyGoesHere&output=json&page=0', headers={'User-Agent': 'Mozilla/5.0'})
+    ViewDNS.append(urlopen(Req).read().decode('utf-8'))
+    ViewDNSBulk=(ViewDNS[counter2])
+    
+   
+    
+    Req= Request('https://endpoint.apivoid.com/iprep/v1/pay-as-you-go/?key=APIKeyGoesHere&ip='+ ipArray[counter2], headers={'User-Agent': 'Mozilla/5.0'})
+    APIVoid.append(urlopen(Req).read().decode('utf-8'))
+    APIVoidBulk=(APIVoid[counter2])
+                
+  ##  print (APIVoidBulk)
+
+
+##Gather Reverse DNS Info
+    while x<=len(APIVoidBulk)-1 and ExitSearch==0:
+        matchObj=re.search ('"reverse_dns"\:".*?"',APIVoidBulk)
+        if matchObj:
+            APIVoid_rDNS.append(matchObj.group(0))
+            print ("\n"+ipArray[counter2]+":\n"+APIVoid_rDNS[WhoISmatches])
+            WhoISmatches+=1           
+            ExitSearch+=1
+        else:
+             print ("No WhoIS Description Found")
+             ExitSearch+=1
+        x+=1
+        
+            
+    ExitSearch=0
+    x=0
+
+##Gather ISP record
+    
+    while x<=len(APIVoidBulk)-1 and ExitSearch==0:
+        matchObj=re.search ('"act":\[\{"o":.*?",',APIVoidBulk)
+        if matchObj:
+            APIVoid_ISP.append(matchObj.group(0))
+            print (APIVoid_ISP[ISPmatches])
+            ISPmatches+=1
+            ExitSearch+=1
+        else:
+            print ("No ISP Record Found")
+            ExitSearch+=1
+        x+=1
+
+    ExitSearch=0
+    x=0
+##Gather Country IP is located in 
+
+    while x<=len(APIVoidBulk)-1 and ExitSearch==0:
+        matchObj=re.search ('"country_code"\:"[A-Z]*"',APIVoidBulk)
+        if matchObj:        
+            APIVoidCountry.append(matchObj.group(0))
+            print (APIVoidCountry[counter2])
+            ExitSearch+=1
+        else:
+             print ("No Country of Origin Found")
+             APIVoidCountry.append ("No Country of Origin Found")
+             ExitSearch+=1
+        x+=1
+            
+    ExitSearch=0
+    x=0
+
+    
+#Gather Number of Times Blacklisted from APIVoid
+
+    while x<=len(APIVoidBulk)-1 and ExitSearch==0:
+        matchObj=re.search ('detections":.?',APIVoidBulk)
+        if matchObj:
+            APIVoidBlacklistCount.append(matchObj.group(0))
+            print ("\"Blacklist "+APIVoidBlacklistCount[counter2])
+            BlacklistString=APIVoidBlacklistCount[counter2]
+            matchObj2=re.search('[0-9]+',BlacklistString)
+            BlacklistInt= int(matchObj2.group(0))
+            ExitSearch+=1
+        else:
+            print("No Blacklists Contain this IP")
+            BlacklistInt=0
+            ExitSearch+=1
+        x+=1
+    
+     
+    ExitSearch=0   
+    x=0
+    
+        
+    #Gather Domain Count from ViewDNS
+  
+    while x<=len(ViewDNSBulk)-1 and ExitSearch==0:
+        matchObj=re.search ('"domain_count".*?,',ViewDNSBulk)
+        if matchObj:
+            DomainCountString=matchObj.group(0)
+            matchObj2=re.search ('[0-9]+',DomainCountString)
+            DomainCountInt=int(matchObj2.group(0))
+            print (DomainCountString)
+            ExitSearch+=1
+        else:
+            print ("No Domains Hosted")
+            DomainCountInt=0
+            ExitSearch +=1
+        x+=1
+        
+            
+   
+### Decision Making Logic 
+    Verdict=0
+    while Verdict==0:
+        if BlacklistInt>0 and DomainCountInt==0:
+            print ("Blocking this IP is recommended \n")
+            IPBlocklist.append(ipArray[counter2])
+            Verdict=1
+            break
+            
+        if APIVoidCountry[counter2]=="\"country_code\":\"US\"" and BlacklistInt>=1 and DomainCountInt==0:   
+            print ("Blocking this IP is recommended \n")
+            IPBlocklist.append(ipArray[counter2])
+            Verdict=1
+            break
+            
+        if APIVoidCountry[counter2]=="\"country_code\":\"CN\"" and DomainCountInt==0:   
+            print ("Blocking this IP is recommended \n")
+            IPBlocklist.append(ipArray[counter2])
+            Verdict=1
+            break
+        
+        if APIVoidCountry[counter2]=="\"country_code\":\"US\"" and BlacklistInt==0:
+            print ("It is not recommended to block this IP \n")
+            Verdict=1
+            break
+            
+        
+        if BlacklistInt==0:
+            print ("It is not recommended to block this IP \n")
+            Verdict=1
+            break
+            
+        if BlacklistInt>2 and (DomainCountInt>=1 and DomainCountInt<=10):
+            print ("It is recommended to block this IP, but ensure that domains hosted have not been visited in the past 30 days" )
+            IPBlocklist_WithCheck.append(ipArray[counter2])
+            Verdict=1
+            break
+    
+        if APIVoidCountry[counter2]=="\"country_code\":\"US\"" and DomainCountInt>=10 and BlacklistInt>=1 :
+            print ("It is recommended to block this IP, but ensure that domains hosted have not been visited in the past 30 days" )
+            IPBlocklist_WithCheck.append(ipArray[counter2])
+            Verdict=1
+            break
+        Verdict=1
+        
+
+    
+            
+    ExitSearch=0
+    counter2+=1
+    x=0           
+
+#Creating Listing Output
+if len(IPBlocklist)>0:
+    print("\n" + "The following IPs are recommended to be blocked:")
+    for i in range (len(IPBlocklist)):
+        print (IPBlocklist[i])         
+
+if len(IPBlocklist_WithCheck)>0:
+    print("\n" + "The following IPs are recommended to be blocked after ensuring there has been no traffic to them for the past 30 days:")
+    for i in range (len(IPBlocklist_WithCheck)):
+        print (IPBlocklist_WithCheck[i])     
+            
