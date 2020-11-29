@@ -23,4 +23,4 @@ View DNS.info: https://viewdns.info/api/#register
 
 This tool is open source under GNU Public License v3, feel free to take it and make it better, just remember to share the love :). 
 
-=========================================================================================================================================================================
+================================================================================================
