@@ -18,7 +18,7 @@ View DNS.info: https://viewdns.info/api/#register
 2. Copy and paste your IPs, separated by commas. 
 
 
-# Note - This tool is meant to expedite your task, the conclusions of the tool should be right the vast majority of the time. However, always take a quick glance over the Recommended/Not Recommended block lists that are produced before sending off these blocks to a firewall or any other mission critical area. 
+# Note - This tool is meant to expedite your task, the conclusions of the tool are meant to be correct the vast majority of the time, but nothing is perfect. Always take a quick glance over the outputs to make sure everything looks right before sending off to your firewall or other mission critical area. 
 
 
 
