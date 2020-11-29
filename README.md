@@ -1,6 +1,3 @@
-# IPZapp
-IPZapp
-
 =============================IPZapp- Automated IP Analysis ==================================
 
 Written By Kojo Harding Mienza
